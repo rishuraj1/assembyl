@@ -12,34 +12,34 @@ interface MessageCardProps {
     createdAt: Date;
     onFragmentClick: (fragment: Fragment) => void;
     type: MessageType;
-    isActive: boolean;
+    isActiveFragment: boolean;
 }
 
 interface UserMessageProps {
     content: string;
 }
 
-interface AssitantMessageProps {
+interface AssistantMessageProps {
     content: string;
     fragment: Fragment | null;
     createdAt: Date;
     onFragmentClick: (fragment: Fragment) => void;
-    isActive: boolean;
+    isActiveFragment: boolean;
     type: MessageType;
 }
 
 interface FragmentCardProps {
     fragment: Fragment;
-    isActive: boolean;
+    isActiveFragment: boolean;
     onFragmentClick: (fragment: Fragment) => void;
 }
 
-const FragmentCard = ({ fragment, isActive, onFragmentClick }: FragmentCardProps) => {
+const FragmentCard = ({ fragment, isActiveFragment, onFragmentClick }: FragmentCardProps) => {
     return (
         <button
             className={cn(
                 "flex items-start text-start gap-2 border rounded-lg bg-muted w-fit p-3 hover:bg-secondary transition-colors cursor-pointer",
-                isActive && "bg-secondary text-primary-foreground border-primary hover:bg-primary"
+                isActiveFragment && "bg-primary text-primary-foreground border-primary hover:bg-primary"
             )}
             onClick={() => onFragmentClick(fragment)}
         >
@@ -69,14 +69,14 @@ const UserMessage = ({ content }: UserMessageProps) => {
     );
 }
 
-const AssitantMessage = ({
+const AssistantMessage = ({
     content,
     fragment,
     createdAt,
     onFragmentClick,
-    isActive,
+    isActiveFragment,
     type
-}: AssitantMessageProps) => {
+}: AssistantMessageProps) => {
     return (
         <div className={cn(
             "flex flex-col group px-2 pb-4",
@@ -101,7 +101,7 @@ const AssitantMessage = ({
                 {fragment && type === "RESULT" && (
                     <FragmentCard
                         fragment={fragment}
-                        isActive={isActive}
+                        isActiveFragment={isActiveFragment}
                         onFragmentClick={onFragmentClick}
                     />
                 )}
@@ -117,16 +117,16 @@ export default function MessageCard({
     createdAt,
     onFragmentClick,
     type,
-    isActive = false
+    isActiveFragment
 }: MessageCardProps) {
     if (role === "ASSISTANT") {
         return (
-            <AssitantMessage
+            <AssistantMessage
                 content={content}
                 fragment={fragment}
                 createdAt={createdAt}
                 onFragmentClick={onFragmentClick}
-                isActive={isActive}
+                isActiveFragment={isActiveFragment}
                 type={type}
             />
         )
