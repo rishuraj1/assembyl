@@ -66,7 +66,7 @@ const Tree = ({
                 className="data-[active=true]:bg-transparent cursor-pointer hover:bg-accent hover:text-accent-foreground"
                 onClick={() => onSelect?.(currentPath)}
             >
-                <FileIcon className="w-4 h-4 mr-2" />
+                <FileIcon className="w-4 h-4" />
                 <span className="truncate">
                     {item}
                 </span>
@@ -82,8 +82,8 @@ const Tree = ({
                 <Collapsible className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90" defaultOpen>
                     <CollapsibleTrigger asChild>
                         <SidebarMenuButton>
-                            <ChevronRightIcon className="w-4 h-4 mr-2 transition-transform" />
-                            <FolderIcon className="w-4 h-4 mr-2" />
+                            <ChevronRightIcon className="w-4 h-4 transition-transform" />
+                            <FolderIcon className="w-4 h-4" />
                             <span className="truncate">
                                 {name}
                             </span>
