@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpIcon, Loader2Icon, Paperclip } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import TextareaAutosize from "react-textarea-autosize";
 import { toast } from 'sonner';
@@ -9,11 +9,10 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField } from '@/components/ui/form';
+import { PROJECT_TEMPLATES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useTRPC } from '@/trpc/client';
 import { useRouter } from 'next/navigation';
-import { PROJECT_TEMPLATES } from '@/lib/constants';
-import { ProjectsList } from './projects-list';
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
@@ -47,9 +46,8 @@ export const ProjectForm = () => {
             router.push(`/projects/${data.id}`);
         },
         onError: (error) => {
-            // TODO: redirect to pricing page if specific error
-            console.error("Error sending message:", error);
-            toast.error("Failed to send message. Please try again.");
+            toast.error(error.message);
+            router.push('/sign-in');
         }
     }))
 
