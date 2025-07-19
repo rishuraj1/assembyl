@@ -161,6 +161,21 @@
   }
 }
 
+/* Enhanced background for AI theme */
+@layer utilities {
+  .bg-gradient-ai {
+    background: linear-gradient(135deg, 
+      hsl(var(--background)) 0%, 
+      hsl(var(--background) / 0.8) 50%, 
+      hsl(var(--background)) 100%
+    );
+  }
+  
+  .text-glow {
+    text-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+}
+
 @layer base {
   button:not([disabled]),
   [role="button"]:not([disabled]) {

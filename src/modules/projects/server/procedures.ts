@@ -50,6 +50,8 @@ export const projectsRouter = createTRPCRouter({
           .string()
           .min(1, { message: "Prompt cannot be empty" })
           .max(10000, { message: "Prompt is too long." }),
+        model: z.string().min(1, { message: "Model is required" }),
+        apiKey: z.string().min(1, { message: "API key is required" }),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -74,6 +76,8 @@ export const projectsRouter = createTRPCRouter({
         data: {
           value: input.value,
           projectId: createdProject.id,
+          model: input.model,
+          apiKey: input.apiKey,
         },
       });
       return createdProject;

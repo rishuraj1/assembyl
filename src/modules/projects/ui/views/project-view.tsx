@@ -73,11 +73,11 @@ export const ProjectView = ({ projectId }: Props) => {
                                 </TabsTrigger>
                             </TabsList>
                             <div className="ml-auto flex items-center gap-x-2">
-                                <Button asChild size={"sm"} variant={"default"}>
+                                {/* <Button asChild size={"sm"} variant={"default"}>
                                     <Link href={"/pricing"} className="flex items-center gap-x-1">
                                         <CrownIcon /> Upgrade
                                     </Link>
-                                </Button>
+                                </Button> */}
                                 <UserControl />
                             </div>
                         </div>

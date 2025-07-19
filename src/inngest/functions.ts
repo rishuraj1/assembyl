@@ -6,6 +6,8 @@ import {
   createNetwork,
   createTool,
   openai,
+  anthropic,
+  gemini,
   type Tool,
 } from "@inngest/agent-kit";
 import { z } from "zod";
@@ -26,16 +28,38 @@ export const codeAgentFunction = inngest.createFunction(
       return sandbox.sandboxId;
     });
 
+    // Get model and apiKey from event data
+    const { model, apiKey } = event.data;
+
+    // Choose the model provider based on the selected model
+    let agentModel;
+    if (model && model.startsWith("claude")) {
+      // Use Anthropic Claude (replace with your actual Claude integration)
+      agentModel = anthropic({
+        model: "claude-3-5-sonnet-latest",
+        apiKey,
+        defaultParameters: { temperature: 0.1, max_tokens: 2000 },
+      });
+    } else if (model && model.startsWith("gemini")) {
+      // Use Gemini (replace with your actual Gemini integration)
+      agentModel = gemini({
+        model: "gemini-1.5-pro",
+        apiKey,
+      });
+    } else {
+      // Default to OpenAI
+      agentModel = openai({
+        model: "gpt-4.1",
+        apiKey,
+        defaultParameters: { temperature: 0.1 },
+      });
+    }
+
     const codeAgent = createAgent<AgentState>({
       name: "codeAgent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({
-        model: "gpt-4.1",
-        defaultParameters: {
-          temperature: 0.1,
-        },
-      }),
+      model: agentModel,
       tools: [
         createTool({
           name: "terminal",

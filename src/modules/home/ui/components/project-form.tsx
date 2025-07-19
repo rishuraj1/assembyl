@@ -13,9 +13,14 @@ import { PROJECT_TEMPLATES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useTRPC } from '@/trpc/client';
 import { useRouter } from 'next/navigation';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
+    model: z.string().min(1, 'Model is required'),
+    apiKey: z.string().min(1, 'API key is required'),
 })
 
 // Add animation styles
@@ -33,7 +38,9 @@ export const ProjectForm = () => {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            value: ""
+            value: "",
+            model: "openai-gpt-4", // default model
+            apiKey: ""
         }
     });
 
@@ -55,6 +62,8 @@ export const ProjectForm = () => {
         console.log("Submitting message:", values);
         await createProject.mutateAsync({
             value: values.value,
+            model: values.model,
+            apiKey: values.apiKey
         })
     }
 
@@ -97,6 +106,48 @@ export const ProjectForm = () => {
                             isFocused && "shadow-xs",
                         )}
                     >
+                        {/* Model selection */}
+                        <FormField
+                            control={form.control}
+                            name='model'
+                            render={({ field }) => (
+                                <div className="mb-2">
+                                    <FormLabel>Model</FormLabel>
+                                    <FormControl>
+                                        <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Select a model" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="openai-gpt-4">OpenAI GPT-4</SelectItem>
+                                                <SelectItem value="claude-3">Claude 3</SelectItem>
+                                                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <FormMessage />
+                                </div>
+                            )}
+                        />
+                        {/* API Key input */}
+                        <FormField
+                            control={form.control}
+                            name='apiKey'
+                            render={({ field }) => (
+                                <div className="mb-2">
+                                    <FormLabel>API Key</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} type="password" placeholder="Enter your API key" autoComplete="off" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </div>
+                            )}
+                        />
+                        {/* Existing textarea and submit button */}
                         <FormField
                             control={form.control}
                             name='value'
@@ -150,13 +201,13 @@ export const ProjectForm = () => {
                                             </Button>
                                         </div>
                                     )}
-                                    <Button
+                                    {/* <Button
                                         className={"size-8 bg-transparent text-zinc-500 hover:bg-transparent hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"}
                                         tabIndex={0}
                                         type="button"
                                     >
                                         <Paperclip className='h-4 w-4' />
-                                    </Button>
+                                    </Button> */}
                                 </div>
                                 <Button
                                     disabled={isButtonDisabled}
