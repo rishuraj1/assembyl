@@ -19,8 +19,6 @@ import { FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
-    model: z.string().min(1, 'Model is required'),
-    apiKey: z.string().min(1, 'API key is required'),
 })
 
 // Add animation styles
@@ -39,8 +37,6 @@ export const ProjectForm = () => {
         resolver: zodResolver(formSchema),
         defaultValues: {
             value: "",
-            model: "openai-gpt-4", // default model
-            apiKey: ""
         }
     });
 
@@ -50,11 +46,19 @@ export const ProjectForm = () => {
             queryClient.invalidateQueries(
                 trpc.projects.getMany.queryOptions()
             )
+            queryClient.invalidateQueries(
+                trpc.usage.status.queryOptions()
+            )
             router.push(`/projects/${data.id}`);
         },
         onError: (error) => {
             toast.error(error.message);
-            router.push('/sign-in');
+            if (error.data?.code === "UNAUTHORIZED") {
+                router.push('/sign-in');
+            }
+            if (error.data?.code === "TOO_MANY_REQUESTS") {
+                router.push('/pricing');
+            }
         }
     }))
 
@@ -62,8 +66,6 @@ export const ProjectForm = () => {
         console.log("Submitting message:", values);
         await createProject.mutateAsync({
             value: values.value,
-            model: values.model,
-            apiKey: values.apiKey
         })
     }
 
@@ -106,47 +108,6 @@ export const ProjectForm = () => {
                             isFocused && "shadow-xs",
                         )}
                     >
-                        {/* Model selection */}
-                        <FormField
-                            control={form.control}
-                            name='model'
-                            render={({ field }) => (
-                                <div className="mb-2">
-                                    <FormLabel>Model</FormLabel>
-                                    <FormControl>
-                                        <Select
-                                            value={field.value}
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Select a model" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="openai-gpt-4">OpenAI GPT-4</SelectItem>
-                                                <SelectItem value="claude-3">Claude 3</SelectItem>
-                                                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </FormControl>
-                                    <FormMessage />
-                                </div>
-                            )}
-                        />
-                        {/* API Key input */}
-                        <FormField
-                            control={form.control}
-                            name='apiKey'
-                            render={({ field }) => (
-                                <div className="mb-2">
-                                    <FormLabel>API Key</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} type="password" placeholder="Enter your API key" autoComplete="off" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </div>
-                            )}
-                        />
                         {/* Existing textarea and submit button */}
                         <FormField
                             control={form.control}

@@ -9,11 +9,10 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField } from '@/components/ui/form';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { useTRPC } from '@/trpc/client';
+import { useRouter } from 'next/navigation';
+import { Usage } from './usage';
 
 interface Props {
     projectId: string
@@ -21,20 +20,19 @@ interface Props {
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
-    model: z.string().min(1, 'Model is required'),
-    apiKey: z.string().min(1, 'API key is required'),
 })
 
 export const MessageForm = ({ projectId }: Props) => {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const router = useRouter();
+
+    const { data: usage } = useQuery(trpc.usage.status.queryOptions())
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             value: "",
-            model: "openai-gpt-4", // default model
-            apiKey: ""
         }
     });
 
@@ -46,11 +44,17 @@ export const MessageForm = ({ projectId }: Props) => {
                     projectId
                 })
             )
+            queryClient.invalidateQueries(
+                trpc.usage.status.queryOptions()
+            )
         },
         onError: (error) => {
-            // TODO: redirect to pricing page if specific error
-            console.error("Error sending message:", error);
-            toast.error("Failed to send message. Please try again.");
+            toast.error(error.message);
+
+
+            if (error.data?.code === "TOO_MANY_REQUESTS") {
+                router.push('/pricing');
+            }
         }
     }))
 
@@ -59,17 +63,19 @@ export const MessageForm = ({ projectId }: Props) => {
         await createMessage.mutateAsync({
             value: values.value,
             projectId,
-            model: values.model,
-            apiKey: values.apiKey
         })
     }
 
     const [isFocused, setIsFocused] = useState(false);
     const isPending = createMessage.isPending;
     const isButtonDisabled = isPending || !form.formState.isValid
+    const showUsage = !!usage
 
     return (
         <Form {...form}>
+            {showUsage && (
+                <Usage points={usage.remainingPoints} msBeforeNext={usage.msBeforeNext} />
+            )}
             <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className={cn(
@@ -77,47 +83,6 @@ export const MessageForm = ({ projectId }: Props) => {
                     isFocused && "shadow-xs",
                 )}
             >
-                {/* Model selection */}
-                <FormField
-                    control={form.control}
-                    name='model'
-                    render={({ field }) => (
-                        <div className="mb-2">
-                            <FormLabel>Model</FormLabel>
-                            <FormControl>
-                                <Select
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select a model" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="openai-gpt-4">OpenAI GPT-4</SelectItem>
-                                        <SelectItem value="claude-3">Claude 3</SelectItem>
-                                        <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormControl>
-                            <FormMessage />
-                        </div>
-                    )}
-                />
-                {/* API Key input */}
-                <FormField
-                    control={form.control}
-                    name='apiKey'
-                    render={({ field }) => (
-                        <div className="mb-2">
-                            <FormLabel>API Key</FormLabel>
-                            <FormControl>
-                                <Input {...field} type="password" placeholder="Enter your API key" autoComplete="off" />
-                            </FormControl>
-                            <FormMessage />
-                        </div>
-                    )}
-                />
                 {/* Existing textarea and submit button */}
                 <FormField
                     control={form.control}

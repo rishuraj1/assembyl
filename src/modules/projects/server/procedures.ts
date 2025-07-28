@@ -1,5 +1,6 @@
 import { inngest } from "@/inngest/client";
 import { prisma } from "@/lib/db";
+import { consumeCredits } from "@/lib/usage";
 import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { generateSlug } from "random-word-slugs";
@@ -50,11 +51,26 @@ export const projectsRouter = createTRPCRouter({
           .string()
           .min(1, { message: "Prompt cannot be empty" })
           .max(10000, { message: "Prompt is too long." }),
-        model: z.string().min(1, { message: "Model is required" }),
-        apiKey: z.string().min(1, { message: "API key is required" }),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      try {
+        await consumeCredits();
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Something went wrong.",
+          });
+        } else {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "You have run out of credits. Please upgrade your plan to continue using the service.",
+          });
+        }
+      }
+
       const createdProject = await prisma.project.create({
         data: {
           name: generateSlug(2, {
@@ -76,8 +92,6 @@ export const projectsRouter = createTRPCRouter({
         data: {
           value: input.value,
           projectId: createdProject.id,
-          model: input.model,
-          apiKey: input.apiKey,
         },
       });
       return createdProject;
