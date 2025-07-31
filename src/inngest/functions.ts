@@ -1,21 +1,19 @@
+import { SANDBOX_TIMEOUT } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/lib/prompt";
 import { Sandbox } from "@e2b/code-interpreter";
 import {
   createAgent,
   createNetwork,
+  createState,
   createTool,
   openai,
-  anthropic,
-  gemini,
-  type Tool,
   type Message,
-  createState,
+  type Tool
 } from "@inngest/agent-kit";
 import { z } from "zod";
 import { inngest } from "./client";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
-import { SANDBOX_TIMEOUT } from "@/lib/constants";
 
 interface AgentState {
   summary: string;
@@ -68,14 +66,23 @@ export const codeAgentFunction = inngest.createFunction(
       }
     );
 
+    const openRouterModel = (modelName: string) =>
+      openai({
+        model: modelName,
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKey: process.env.OPENROUTER_API_KEY,
+        defaultParameters: { temperature: 0.1 },
+      });
+
     const codeAgent = createAgent<AgentState>({
       name: "codeAgent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({
-        model: "gpt-4.1",
-        defaultParameters: { temperature: 0.1 },
-      }),
+      // model: openai({
+      //   model: "gpt-4.1",
+      //   defaultParameters: { temperature: 0.1 },
+      // }),
+      model: openRouterModel("openrouter/horizon-alpha"),
       tools: [
         createTool({
           name: "terminal",
@@ -201,20 +208,22 @@ export const codeAgentFunction = inngest.createFunction(
       name: "fragmentTitleGenerator",
       description: "Generates a title for the code fragment",
       system: FRAGMENT_TITLE_PROMPT,
-      model: openai({
-        model: "gpt-4o-mini",
-        defaultParameters: { temperature: 0.1 },
-      }),
+      // model: openai({
+      //   model: "gpt-4o-mini",
+      //   defaultParameters: { temperature: 0.1 },
+      // }),
+      model: openRouterModel("openrouter/horizon-alpha"),
     });
 
     const responseGenerator = createAgent<AgentState>({
       name: "responseGenerator",
       description: "Generates a response message",
       system: RESPONSE_PROMPT,
-      model: openai({
-        model: "gpt-4o-mini",
-        defaultParameters: { temperature: 0.1 },
-      }),
+      // model: openai({
+      //   model: "gpt-4o-mini",
+      //   defaultParameters: { temperature: 0.1 },
+      // }),
+      model: openRouterModel("openrouter/horizon-alpha"),
     });
 
     const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(
