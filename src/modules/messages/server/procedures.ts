@@ -30,6 +30,26 @@ export const messageRouter = createTRPCRouter({
 
       return messages;
     }),
+    getOneFragment: protectedProcedure
+    .input(
+      z.object({
+        fragmentId: z.string().min(1, { message: "Fragment ID is required" }),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const fragment = await prisma.fragment.findUnique({
+        where: {
+          id: input.fragmentId,
+        },
+      });
+      if (!fragment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Fragment not found.",
+        });
+      }
+      return fragment;
+    }),
   create: protectedProcedure
     .input(
       z.object({
@@ -87,5 +107,52 @@ export const messageRouter = createTRPCRouter({
         },
       });
       return createdMessage;
+    }),
+  updateCode: protectedProcedure
+    .input(
+      z.object({
+        fragmentId: z.string().min(1, { message: "Fragment ID is required" }),
+        updatedCode: z.string().min(1, { message: "Code cannot be empty" }),
+        fileName: z.string().min(1, { message: "File name is required" }),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { fileName, fragmentId, updatedCode } = input;
+      const fragment = await prisma.fragment.findUnique({
+        where: {
+          id: fragmentId,
+        },
+      });
+
+      if (!fragment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Fragment not found.",
+        });
+      }
+
+      const updatedFiles = {
+        ...(fragment.files as Record<string, string>),
+        [fileName]: updatedCode,
+      };
+
+      await prisma.fragment.update({
+        where: {
+          id: fragmentId,
+        },
+        data: {
+          files: updatedFiles,
+        },
+      });
+      await inngest.send({
+        name: "code-agent/reload",
+        data: {
+          fragmentId,
+        },
+      });
+      return {
+        fragmentId,
+        updatedFiles,
+      };
     }),
 });

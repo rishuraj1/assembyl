@@ -3,11 +3,15 @@ import { Sandbox } from "@e2b/code-interpreter";
 import { AgentResult, TextMessage } from "@inngest/agent-kit";
 
 export async function getSandbox(sandboxId: string) {
-  const sandbox = await Sandbox.connect(sandboxId);
-  await sandbox.setTimeout(SANDBOX_TIMEOUT); // 30 minutes
-  return sandbox;
+  try {
+    const sandbox = await Sandbox.connect(sandboxId);
+    await sandbox.setTimeout(SANDBOX_TIMEOUT); // 30 minutes
+    return sandbox;
+  } catch (err) {
+    console.error("Failed to connect to sandbox:", err);
+    return null;
+  }
 }
-
 export function lastAssistantTextMessageContent(result: AgentResult) {
   const lastAssistantTextMessageIndex = result.output.findLastIndex(
     (message) => message.role === "assistant"
