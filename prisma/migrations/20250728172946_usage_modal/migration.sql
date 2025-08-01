@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Usage" ALTER COLUMN "points" SET DEFAULT 0,
-ALTER COLUMN "expire" DROP NOT NULL;

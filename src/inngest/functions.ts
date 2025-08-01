@@ -9,7 +9,7 @@ import {
   createTool,
   openai,
   type Message,
-  type Tool
+  type Tool,
 } from "@inngest/agent-kit";
 import { z } from "zod";
 import { inngest } from "./client";
@@ -24,11 +24,43 @@ export const codeAgentFunction = inngest.createFunction(
   { id: "code-agent" },
   { event: "code-agent/run" },
   async ({ event, step }) => {
+    const previousFragmentFiles = await step.run(
+      "get-previous-fragment-files",
+      async () => {
+        const lastFrag = await prisma.message.findFirst({
+          where: {
+            projectId: event.data.projectId,
+            role: "ASSISTANT",
+            type: "RESULT",
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          include: {
+            Fragment: true,
+          },
+        });
+        if (lastFrag && lastFrag.Fragment?.files) {
+          return lastFrag.Fragment.files as { [path: string]: string };
+        }
+        return {};
+      }
+    );
+
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("assembyl-nextjs-test2");
       await sandbox.setTimeout(SANDBOX_TIMEOUT); // 30 minutes
       return sandbox.sandboxId;
     });
+
+    await step.run("rehydrate-sandbox-files", async () => {
+      if(Object.keys(previousFragmentFiles).length > 0) {
+        const sandbox = await getSandbox(sandboxId);
+        for(const [path, content] of Object.entries(previousFragmentFiles)) {
+          await sandbox.files.write(path, content);
+        }
+      }
+    })
 
     const previousMessages = await step.run(
       "get-previous-messages",
@@ -59,7 +91,7 @@ export const codeAgentFunction = inngest.createFunction(
     const state = createState<AgentState>(
       {
         summary: "",
-        files: {},
+        files: previousFragmentFiles,
       },
       {
         messages: previousMessages,
@@ -282,6 +314,7 @@ export const codeAgentFunction = inngest.createFunction(
           type: "RESULT",
           Fragment: {
             create: {
+              sandboxId: sandboxId,
               sandboxUrl: sandboxUrl,
               title: generateFragmentTitle(),
               files: result.state.data.files || {},
