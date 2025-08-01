@@ -1,5 +1,5 @@
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
-import { useState, useMemo, useCallback, Fragment } from "react";
+import { useState, useMemo, useCallback, Fragment, useEffect } from "react";
 import { Hint } from "./hint";
 import { Button } from "./ui/button";
 import { CodeView } from "./code-view";
@@ -20,11 +20,17 @@ import {
 } from "./ui/breadcrumb"
 import { convertFilesToTreeItems } from "@/lib/utils";
 import { TreeView } from "./tree-view";
+import debounce from "lodash.debounce";
+import { useTRPC } from "@/trpc/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 type FileCollection = { [path: string]: string };
 
+const DEBOUNCE_DELAY = 1000; // 1 second
+
 interface FileExplorerProps {
     files: FileCollection
+    fragmentId?: string;
 }
 
 function getLanguageFromExtension(fileName: string): string {
@@ -97,11 +103,14 @@ const FileBreadcrumb = ({ filePath }: FileBreadcrumbProps) => {
     )
 }
 
-export const FileExplorer = ({ files }: FileExplorerProps) => {
+export const FileExplorer = ({ files, fragmentId }: FileExplorerProps) => {
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
     const [selectedFile, setSelectedFile] = useState<string | null>(() => {
         const fileKeys = Object.keys(files);
         return fileKeys.length > 0 ? fileKeys[0] : null;
     });
+    const [currentFileContent, setCurrentFileContent] = useState<string | undefined>(files[selectedFile || ""]);
     const [isCopying, setIsCopying] = useState(false);
 
     const treeData = useMemo(() => {
@@ -126,15 +135,59 @@ export const FileExplorer = ({ files }: FileExplorerProps) => {
                 .catch(err => {
                     console.error("Failed to copy:", err);
                 });
-                toast.success("File content copied to clipboard", {
-                    description: "You can now paste it anywhere.",
-                    duration: 2000,
-                });
+            toast.success("File content copied to clipboard", {
+                description: "You can now paste it anywhere.",
+                duration: 2000,
+            });
         }
         setTimeout(() => {
             setIsCopying(false);
         }, 2000); // Reset after 2 seconds
     }, [selectedFile, files]);
+
+    const updateCode = useMutation(
+        trpc.messages.updateCode.mutationOptions({
+            onSuccess: () => {
+                toast.success("Code saved");
+                queryClient.invalidateQueries(
+                    trpc.messages.getOneFragment.queryOptions({
+                        fragmentId: fragmentId || "",
+                    })
+                );
+            },
+            onError: (err) => {
+                toast.error("Failed to save code", {
+                    description: err.message,
+                });
+            },
+        })
+    );
+
+    const debouncedUpdate = useMemo(() => {
+        return debounce(
+            (fragmentId: string, fileName: string, updatedCode: string) => {
+                updateCode.mutate({ fragmentId, fileName, updatedCode });
+            },
+            DEBOUNCE_DELAY
+        );
+    }, [updateCode]);
+
+    const updateCodeAndReload = useCallback(
+        (updatedCode: string | undefined) => {
+            if (!fragmentId || !selectedFile || !updatedCode) return;
+
+            debouncedUpdate(fragmentId, selectedFile, updatedCode);
+            setCurrentFileContent(updatedCode);
+
+        },
+        [fragmentId, selectedFile]
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedUpdate.cancel();
+        };
+    }, [debouncedUpdate]);
 
     return (
         <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -169,8 +222,9 @@ export const FileExplorer = ({ files }: FileExplorerProps) => {
                         </div>
                         <div className="flex-1 overflow-y-auto p-2">
                             <CodeView
-                                code={files[selectedFile]}
+                                code={currentFileContent || ""}
                                 language={getLanguageFromExtension(selectedFile)}
+                                onChange={updateCodeAndReload}
                             />
                         </div>
                     </div>

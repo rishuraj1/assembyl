@@ -98,6 +98,7 @@ export const ProjectView = ({ projectId }: Props) => {
                             {!!activeFragment?.files && (
                                 <FileExplorer
                                     files={activeFragment.files as { [path: string]: string }}
+                                    fragmentId={activeFragment.id}
                                 />
                             )}
                         </TabsContent>

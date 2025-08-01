@@ -54,13 +54,13 @@ export const codeAgentFunction = inngest.createFunction(
     });
 
     await step.run("rehydrate-sandbox-files", async () => {
-      if(Object.keys(previousFragmentFiles).length > 0) {
+      if (Object.keys(previousFragmentFiles).length > 0) {
         const sandbox = await getSandbox(sandboxId);
-        for(const [path, content] of Object.entries(previousFragmentFiles)) {
-          await sandbox.files.write(path, content);
+        for (const [path, content] of Object.entries(previousFragmentFiles)) {
+          await sandbox?.files.write(path, content);
         }
       }
-    })
+    });
 
     const previousMessages = await step.run(
       "get-previous-messages",
@@ -127,7 +127,7 @@ export const codeAgentFunction = inngest.createFunction(
               const buffers = { stdout: "", stderr: "" };
               try {
                 const sandbox = await getSandbox(sandboxId);
-                const result = await sandbox.commands.run(command, {
+                const result = await sandbox?.commands.run(command, {
                   onStdout: (data: string) => {
                     buffers.stdout += data;
                   },
@@ -135,7 +135,7 @@ export const codeAgentFunction = inngest.createFunction(
                     buffers.stderr += data;
                   },
                 });
-                return result.stdout;
+                return result?.stdout;
               } catch (error: any) {
                 console.error(
                   `Command failed: ${error} \nstdout: ${buffers.stdout} \nstderr: ${buffers.stderr}`
@@ -168,7 +168,7 @@ export const codeAgentFunction = inngest.createFunction(
                   const updatedFiles = network.state.data.files || {};
                   const sandbox = await getSandbox(sandboxId);
                   for (const file of files) {
-                    await sandbox.files.write(file.path, file.content);
+                    await sandbox?.files.write(file.path, file.content);
                     updatedFiles[file.path] = file.content;
                   }
                   return updatedFiles;
@@ -195,7 +195,7 @@ export const codeAgentFunction = inngest.createFunction(
                 const sandbox = await getSandbox(sandboxId);
                 const contents = [];
                 for (const file of files) {
-                  const content = await sandbox.files.read(file);
+                  const content = await sandbox?.files.read(file);
                   contents.push({ path: file, content });
                 }
                 return JSON.stringify(contents);
@@ -291,7 +291,7 @@ export const codeAgentFunction = inngest.createFunction(
 
     const sandboxUrl = await step.run("get-sandbox-url", async () => {
       const sandbox = await getSandbox(sandboxId);
-      const host = sandbox.getHost(3000);
+      const host = sandbox?.getHost(3000);
       return `https://${host}`;
     });
 
@@ -330,5 +330,42 @@ export const codeAgentFunction = inngest.createFunction(
       files: result.state.data.files,
       summary: result.state.data.summary,
     };
+  }
+);
+
+export const reloadE2BAgent = inngest.createFunction(
+  { id: "code-agent-reload" },
+  { event: "code-agent/reload" },
+  async ({ event, step }) => {
+    console.log("Reloading E2B Agent for fragment:", event.data.fragmentId);
+    const getThisFragment = await step.run("get-this-fragment", async () => {
+      const fragment = await prisma.fragment.findUnique({
+        where: {
+          id: event.data.fragmentId,
+        },
+      });
+      if (!fragment) {
+        throw new Error("Fragment not found");
+      }
+      return fragment;
+    });
+
+    const sandboxId = getThisFragment.sandboxId;
+    const sandbox = await getSandbox(sandboxId);
+
+    if (!sandbox) {
+      return;
+    }
+
+    const rewriteFiles = await step.run("rehydrate-sandbox-files", async () => {
+      if (
+        getThisFragment.files &&
+        Object.keys(getThisFragment.files).length > 0
+      ) {
+        for (const [path, content] of Object.entries(getThisFragment.files)) {
+          await sandbox.files.write(path, content);
+        }
+      }
+    });
   }
 );
