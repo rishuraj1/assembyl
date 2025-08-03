@@ -114,7 +114,7 @@ export const codeAgentFunction = inngest.createFunction(
       //   model: "gpt-4.1",
       //   defaultParameters: { temperature: 0.1 },
       // }),
-      model: openRouterModel("openrouter/horizon-alpha"),
+      model: openRouterModel(process.env.LLM_MODEL!),
       tools: [
         createTool({
           name: "terminal",
@@ -244,7 +244,7 @@ export const codeAgentFunction = inngest.createFunction(
       //   model: "gpt-4o-mini",
       //   defaultParameters: { temperature: 0.1 },
       // }),
-      model: openRouterModel("openrouter/horizon-alpha"),
+      model: openRouterModel(process.env.LLM_MODEL!),
     });
 
     const responseGenerator = createAgent<AgentState>({
@@ -255,7 +255,7 @@ export const codeAgentFunction = inngest.createFunction(
       //   model: "gpt-4o-mini",
       //   defaultParameters: { temperature: 0.1 },
       // }),
-      model: openRouterModel("openrouter/horizon-alpha"),
+      model: openRouterModel(process.env.LLM_MODEL!),
     });
 
     const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(
