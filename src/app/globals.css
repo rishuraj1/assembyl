@@ -182,3 +182,23 @@
     cursor: pointer;
   }
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-2px) translateX(10px);
+  }
+  50% {
+    transform: translateY(3px) translateX(12px);
+  }
+  75% {
+    transform: translateY(-3px) translateX(-3px);
+  }
+}
+
+.floating-btn {
+  animation: float 12s ease-in-out infinite;
+  position: relative;
+}

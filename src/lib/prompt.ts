@@ -132,3 +132,38 @@ The title should be:
 
 Only return the raw title.
 `;
+
+export const EXAMPLE_PROMPTS = `{
+  "instruction": "Generate an array of project template objects. Each object must include:",
+  "structure": {
+    "emoji": "A single emoji representing the theme of the project.",
+    "title": "A short and catchy project title (e.g., 'Build a Netflix clone').",
+    "prompt": "A 1–3 sentence instructional description of the project. It should explain what the user should build, suggest UI ideas and functionality, and mention using mock data and local state. The tone should be friendly and focused on frontend development with React or similar frameworks."
+  },
+  "constraints": {
+    "output_format": "JSON",
+    "item_count": 8,
+    "categories": [
+      "Entertainment",
+      "Productivity",
+      "Dashboards",
+      "E-commerce",
+      "Social Media",
+      "Music",
+      "Planning Tools",
+      "Developer Tools"
+    ]
+  },
+  "example": [
+    {
+      "emoji": "🎬",
+      "title": "Build a Netflix clone",
+      "prompt": "Build a Netflix-style homepage with a hero banner (use a nice, dark-mode compatible gradient here), movie sections, responsive cards, and a modal for viewing details using mock data and local state. Use dark mode."
+    },
+    {
+      "emoji": "📝",
+      "title": "Build a Notion-style notes app",
+      "prompt": "Create a Notion-inspired notes app with a sidebar for pages, a rich text editor, and drag-and-drop page organization. Use local state and focus on clean, minimal design with subtle shadows and smooth transitions."
+    }
+  ]
+}`;

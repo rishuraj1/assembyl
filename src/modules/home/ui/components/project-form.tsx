@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowUpIcon, Loader2Icon, Paperclip } from 'lucide-react';
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import TextareaAutosize from "react-textarea-autosize";
 import { toast } from 'sonner';
@@ -9,13 +9,10 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField } from '@/components/ui/form';
-import { PROJECT_TEMPLATES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useTRPC } from '@/trpc/client';
 import { useRouter } from 'next/navigation';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { FormControl, FormLabel, FormMessage } from '@/components/ui/form';
+import { RANDOM_PROMPT } from '@/types';
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
@@ -40,6 +37,10 @@ export const ProjectForm = () => {
         }
     });
 
+    const { data: randomPrompts, refetch, isRefetching } = useQuery({
+        ...trpc.home.getPrompts.queryOptions(),
+        enabled: true
+    })
     const createProject = useMutation(trpc.projects.create.mutationOptions({
         onSuccess: (data) => {
             form.reset();
@@ -63,7 +64,6 @@ export const ProjectForm = () => {
     }))
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        console.log("Submitting message:", values);
         await createProject.mutateAsync({
             value: values.value,
         })
@@ -78,23 +78,10 @@ export const ProjectForm = () => {
     }
 
     const [isFocused, setIsFocused] = useState(false);
-    const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
-    const attachmentRef = useRef<HTMLDivElement>(null);
-    // Timer for delayed hide
-    const hideTimer = useRef<NodeJS.Timeout | null>(null);
 
-    // Handlers to show/hide with delay
-    const handlePopoverEnter = () => {
-        if (hideTimer.current) clearTimeout(hideTimer.current);
-        setShowAttachmentOptions(true);
-    };
-    const handlePopoverLeave = () => {
-        hideTimer.current = setTimeout(() => setShowAttachmentOptions(false), 120);
-    };
+    const attachmentRef = useRef<HTMLDivElement>(null);
     const isPending = createProject.isPending;
     const isButtonDisabled = isPending || !form.formState.isValid
-
-    console.log("isBUttonDisabled:", isButtonDisabled);
 
     return (
         <>
@@ -139,37 +126,12 @@ export const ProjectForm = () => {
                                 &nbsp;to submit
                             </div>
                             <div className='gap-x-2 flex items-center'>
-                                <div
-                                    className='relative'
-                                    ref={attachmentRef}
-                                    onMouseEnter={handlePopoverEnter}
-                                    onMouseLeave={handlePopoverLeave}
-                                    tabIndex={-1}
+                                {/* <Button
+                                    className={"size-8 bg-transparent text-zinc-500 hover:bg-transparent hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"}
+                                    type="button"
                                 >
-                                    {/* Popover with two buttons above, horizontal and animated */}
-                                    {showAttachmentOptions && (
-                                        <div
-                                            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-row gap-2 z-10"
-                                            style={{
-                                                animation: 'slideUpFadeIn 0.25s cubic-bezier(0.4,0,0.2,1)',
-                                            }}
-                                        >
-                                            <Button size="icon" className="size-8 bg-white dark:bg-zinc-800 shadow border border-zinc-200 dark:border-zinc-700 transition-transform hover:scale-110">
-                                                <span role="img" aria-label="Image">🖼️</span>
-                                            </Button>
-                                            <Button size="icon" className="size-8 bg-white dark:bg-zinc-800 shadow border border-zinc-200 dark:border-zinc-700 transition-transform hover:scale-110">
-                                                <span role="img" aria-label="File">📄</span>
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {/* <Button
-                                        className={"size-8 bg-transparent text-zinc-500 hover:bg-transparent hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"}
-                                        tabIndex={0}
-                                        type="button"
-                                    >
-                                        <Paperclip className='h-4 w-4' />
-                                    </Button> */}
-                                </div>
+                                    <Paperclip className='h-4 w-4' />
+                                </Button> */}
                                 <Button
                                     disabled={isButtonDisabled}
                                     className={cn(
@@ -182,19 +144,29 @@ export const ProjectForm = () => {
                             </div>
                         </div>
                     </form>
-                    <div className='flex-wrap justify-center gap-2 hidden md:flex max-w-3xl'>
-                        {PROJECT_TEMPLATES.map((template) => (
-                            <Button
-                                key={template.title}
-                                variant={"outline"}
-                                size="sm"
-                                className='bg-white cursor-pointer dark:bg-sidebar text-muted-foreground hover:bg-muted-foreground hover:text-white transition-colors'
-                                onClick={() => onSelect(template.prompt)}
-                                disabled={isPending}
-                            >
-                                {template.emoji} {template.title}
-                            </Button>
-                        ))}
+                    <div className='relative flex-wrap justify-center gap-6 hidden md:flex max-w-3xl'>
+                        {randomPrompts && randomPrompts.length > 0 && !isRefetching ? (
+                            randomPrompts.map((template: RANDOM_PROMPT, idx) => (
+                                <Button
+                                    key={template.title}
+                                    variant={"outline"}
+                                    size="sm"
+                                    className={cn(
+                                        'floating-btn bg-white cursor-pointer dark:bg-sidebar text-muted-foreground hover:bg-muted-foreground hover:text-white transition-colors',
+                                        `delay-${(idx % 2) * 100}`
+                                    )}
+                                    onClick={() => onSelect(template.prompt)}
+                                    disabled={isPending}
+                                    style={{
+                                        animationDelay: `${(idx % 5) * 0.4}s`,
+                                    }}
+                                >
+                                    {template.emoji} {template.title}
+                                </Button>
+                            ))
+                        ) : (
+                            <Loader2Icon className='h-6 w-6 animate-spin text-muted-foreground' />
+                        )}
                     </div>
                 </section>
             </Form>
