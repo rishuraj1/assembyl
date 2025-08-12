@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { useTRPC } from '@/trpc/client';
 import { useRouter } from 'next/navigation';
 import { RANDOM_PROMPT } from '@/types';
+import { Input } from '@/components/ui/input';
+import Image from 'next/image';
 
 const formSchema = z.object({
     value: z.string().min(1, 'Prompt cannot be empty').max(10000, 'Prompt cannot exceed 10000 characters'),
@@ -36,6 +38,7 @@ export const ProjectForm = () => {
             value: "",
         }
     });
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
     const { data: randomPrompts, refetch, isRefetching } = useQuery({
         ...trpc.home.getPrompts.queryOptions(),
@@ -79,9 +82,45 @@ export const ProjectForm = () => {
 
     const [isFocused, setIsFocused] = useState(false);
 
-    const attachmentRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const isPending = createProject.isPending;
     const isButtonDisabled = isPending || !form.formState.isValid
+
+    const getPresignedUrl = useMutation(trpc.resources.getPresignedUrl.mutationOptions({
+        onSuccess: (data) => {
+            console.log(`✅ Presigned URL: ${data.url}`);
+            setSelectedFiles(prev => [...prev, ...Array.from(fileInputRef.current?.files || [])]);
+        },
+        onError: (error) => {
+            toast.error(error.message);
+        }
+    }));
+
+    async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        if (!e.target.files) return;
+
+        await Promise.all(
+            Array.from(e.target.files).map(async (file) => {
+                // Call mutation to get signed URL
+                const { url, key } = await getPresignedUrl.mutateAsync({
+                    fileName: file.name,
+                    fileType: file.type,
+                });
+
+                // Upload file to S3
+                await fetch(url, {
+                    method: "PUT",
+                    headers: { "Content-Type": file.type },
+                    body: file,
+                });
+
+                console.log(`✅ Uploaded to S3: ${key}`);
+                toast.success(`File uploaded: ${file.name}`);
+            })
+        );
+    }
+
+
 
     return (
         <>
@@ -95,7 +134,32 @@ export const ProjectForm = () => {
                             isFocused && "shadow-xs",
                         )}
                     >
-                        {/* Existing textarea and submit button */}
+                        {selectedFiles.length > 0 && (
+                            <div className='flex flex-wrap gap-2 mb-2'>
+                                {selectedFiles.map((file, index) => (
+                                    <div key={index} className='flex items-center gap-2 bg-muted p-2 rounded-md'>
+                                        if(file.type.startsWith('image/')) {
+                                            <Image
+                                                src={URL.createObjectURL(file)}
+                                                alt={file.name}
+                                                width={40}
+                                                height={40}
+                                                className='rounded-md'
+                                            />
+                                        }
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                                            }}
+                                        >
+                                            &times;
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <FormField
                             control={form.control}
                             name='value'
@@ -118,6 +182,22 @@ export const ProjectForm = () => {
                                 />
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name='fileName'
+                            render={({ field }) => (
+                                <Input
+                                    {...field}
+                                    type="file"
+                                    ref={fileInputRef}
+                                    disabled={isPending}
+                                    multiple
+                                    accept="image/*,video/*,application/pdf,text/plain"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            )}
+                        />
                         <div className='flex gap-x-2 items-end justify-between pt-2'>
                             <div className='text-[10px] text-muted-foreground font-mono'>
                                 <kbd className='ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground'>
@@ -126,12 +206,17 @@ export const ProjectForm = () => {
                                 &nbsp;to submit
                             </div>
                             <div className='gap-x-2 flex items-center'>
-                                {/* <Button
+                                <Button
                                     className={"size-8 bg-transparent text-zinc-500 hover:bg-transparent hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"}
                                     type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isPending}
+                                    style={{
+                                        animation: isFocused ? 'slideUpFadeIn 0.3s ease-out' : 'none',
+                                    }}
                                 >
-                                    <Paperclip className='h-4 w-4' />
-                                </Button> */}
+                                    <Paperclip className='h-4 w-4s' />
+                                </Button>
                                 <Button
                                     disabled={isButtonDisabled}
                                     className={cn(
