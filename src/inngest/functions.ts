@@ -110,11 +110,11 @@ export const codeAgentFunction = inngest.createFunction(
       name: "codeAgent",
       description: "An expert coding agent",
       system: PROMPT,
-      // model: openai({
-      //   model: "gpt-4.1",
-      //   defaultParameters: { temperature: 0.1 },
-      // }),
-      model: openRouterModel(process.env.LLM_MODEL!),
+      model: openai({
+        model: "gpt-4.1",
+        defaultParameters: { temperature: 0.1 },
+      }),
+      // model: openRouterModel(process.env.LLM_MODEL!),
       tools: [
         createTool({
           name: "terminal",
@@ -240,22 +240,22 @@ export const codeAgentFunction = inngest.createFunction(
       name: "fragmentTitleGenerator",
       description: "Generates a title for the code fragment",
       system: FRAGMENT_TITLE_PROMPT,
-      // model: openai({
-      //   model: "gpt-4o-mini",
-      //   defaultParameters: { temperature: 0.1 },
-      // }),
-      model: openRouterModel(process.env.LLM_MODEL!),
+      model: openai({
+        model: "gpt-4o-mini",
+        defaultParameters: { temperature: 0.1 },
+      }),
+      // model: openRouterModel(process.env.LLM_MODEL!),
     });
 
     const responseGenerator = createAgent<AgentState>({
       name: "responseGenerator",
       description: "Generates a response message",
       system: RESPONSE_PROMPT,
-      // model: openai({
-      //   model: "gpt-4o-mini",
-      //   defaultParameters: { temperature: 0.1 },
-      // }),
-      model: openRouterModel(process.env.LLM_MODEL!),
+      model: openai({
+        model: "gpt-4o-mini",
+        defaultParameters: { temperature: 0.1 },
+      }),
+      // model: openRouterModel(process.env.LLM_MODEL!),
     });
 
     const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(
